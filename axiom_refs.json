@@ -1,0 +1,105 @@
+{
+    "policy": {
+        "require_structured_external_axiom_contracts": false,
+        "require_locator_for_external_axioms": true,
+        "require_internal_axiom_note": true,
+        "fail_on_internal_axioms": false
+    },
+    "papers": {
+        "Nash1950": {
+            "title": "Equilibrium points in n-person games",
+            "url": "https://doi.org/10.1073/pnas.36.1.48"
+        },
+        "vonNeumann1928": {
+            "title": "Zur Theorie der Gesellschaftsspiele",
+            "url": "https://doi.org/10.1007/BF01448847"
+        },
+        "Corus2018": {
+            "title": "Level-based analysis of genetic algorithms and other search processes",
+            "url": "https://doi.org/10.1109/TEVC.2017.2753538"
+        },
+        "Lehre2011": {
+            "title": "Fitness-levels for non-elitist populations",
+            "url": "https://doi.org/10.1145/2001576.2001590"
+        },
+        "OlivetoWitt2011": {
+            "title": "Simplified drift analysis for proving lower bounds in evolutionary computation",
+            "url": "https://doi.org/10.1007/s00453-011-9585-3"
+        },
+        "CoevoStabilizationUnifiedPaper": {
+            "title": "Evaluator Alignment and Simultaneous Saddle-Pair Convergence in Competitive Coevolution",
+            "url": "local"
+        },
+        "CoEALevelBasedPaper": {
+            "title": "CoEA Level Based",
+            "url": "local"
+        }
+    },
+    "external_axioms": {
+        "minimax_theorem": {
+            "paper_id": "vonNeumann1928",
+            "locator": "Finite zero-sum minimax theorem"
+        },
+        "level_based_gen_bound": {
+            "paper_id": "Corus2018",
+            "locator": "Theorem 1"
+        },
+        "coea_transition_probability_below_crit": {
+            "paper_id": "Lehre2011",
+            "locator": "Converse of Theorem 2"
+        },
+        "negative_drift_theorem": {
+            "paper_id": "OlivetoWitt2011",
+            "locator": "Theorem 4"
+        }
+    },
+    "internal_axioms": {
+        "is_nash_equilibrium": {
+            "note": "Definitional predicate recording the Nash-equilibrium interface used by the abstract game model."
+        }
+    },
+    "theorems": {
+        "archive_drift_product_bound": {"paper_id": "CoEALevelBasedPaper"},
+        "archive_drift_rate_positive": {"paper_id": "CoEALevelBasedPaper"},
+        "archive_drift_with_eval_scaling": {"paper_id": "CoEALevelBasedPaper"},
+        "archive_exact_offset_preserves_rankings": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "archive_full_drift_derivation": {"paper_id": "CoEALevelBasedPaper"},
+        "archive_lower_bound": {"paper_id": "CoEALevelBasedPaper"},
+        "batch_mean_offset_preserves_rankings": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "batch_runtime_bound": {"paper_id": "CoEALevelBasedPaper"},
+        "batch_runtime_validation": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "batch_size_controls_phase_transition": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "bias_decay_rate": {"paper_id": "CoEALevelBasedPaper"},
+        "coea_nash_phase_transition": {"paper_id": "CoEALevelBasedPaper"},
+        "coea_transition_probability_above_crit": {"paper_id": "CoEALevelBasedPaper"},
+        "combined_transition_prob": {"paper_id": "CoEALevelBasedPaper"},
+        "current_opponent_first_order_cancels": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "current_opponent_full_drift_nonnegative": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "eval_cost_per_gen": {"paper_id": "CoEALevelBasedPaper"},
+        "exact_offset_preserves_eq": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "exact_offset_preserves_le": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "exact_offset_preserves_lt": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "fitness_signal_variance": {"paper_id": "CoEALevelBasedPaper"},
+        "mutation_improvement_prob": {"paper_id": "CoEALevelBasedPaper"},
+        "nat_cast_pos": {"paper_id": "CoEALevelBasedPaper"},
+        "population_runtime_bound": {"paper_id": "CoEALevelBasedPaper"},
+        "proxy_full_drift_nonnegative": {"paper_id": "CoEALevelBasedPaper"},
+        "proxy_zero_drift_cancellation": {"paper_id": "CoEALevelBasedPaper"},
+        "proxy_zero_expected_drift": {"paper_id": "CoEALevelBasedPaper"},
+        "rat_div_pos": {"paper_id": "CoEALevelBasedPaper"},
+        "rat_four_pos": {"paper_id": "CoEALevelBasedPaper"},
+        "rat_one_pos": {"paper_id": "CoEALevelBasedPaper"},
+        "rat_quarter_le_half": {"paper_id": "CoEALevelBasedPaper"},
+        "rat_quarter_pos": {"paper_id": "CoEALevelBasedPaper"},
+        "rat_two_pos": {"paper_id": "CoEALevelBasedPaper"},
+        "reservoir_formation_and_persistence_positive": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "round_robin_specialization_validation": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "round_robin_phase_transition": {"paper_id": "CoEALevelBasedPaper"},
+        "selection_noise_dominance": {"paper_id": "CoEALevelBasedPaper"},
+        "selection_signal_concentration": {"paper_id": "CoEALevelBasedPaper"},
+        "simultaneous_pair_epoch_length_positive": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "simultaneous_pair_epoch_success_positive": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "simultaneous_pair_runtime_surrogate": {"paper_id": "CoevoStabilizationUnifiedPaper"},
+        "snr_implies_selection_bias": {"paper_id": "CoEALevelBasedPaper"}
+    }
+}

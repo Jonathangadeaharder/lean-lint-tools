@@ -1,0 +1,60 @@
+{
+  "expected_axioms": 3,
+  "allowed_orphans": [
+    "full_paper_capstone",
+    "main",
+    "EpistasisModel",
+    "ConcentrationEvent",
+    "SimulatesConditionally",
+    "BatchMeanObjective",
+    "SeparableGameLocal",
+    "EpochParams",
+    "hoeffding_per_offspring_bound",
+    "trap_fitness",
+    "num_ones",
+    "survivor_amplification_comma_selection",
+    "per_generation_failure_bound",
+    "epoch_failure_bound",
+    "separable_game_induces_batch_mean",
+    "trap_game_is_separable",
+    "epoch_success_probability",
+    "trap_game_G1",
+    "trap_game_G2",
+    "trap_game_G3",
+    "T_n_trap_at_target",
+    "distance_monotonicity_trap",
+    "direct_jump_probability_bound",
+    "hoeffding_two_sided_bound",
+    "level_count_preservation_strict",
+    "num_ones_all_ones",
+    "trap_fitness_all_ones_optimal",
+    "interaction_vanishes_at_all_ones",
+    "mean_ranking_preservation",
+    "mean_ranking_preserves_le",
+    "mean_ranking_preserves_lt",
+    "mean_ranking_preserves_eq"
+  ],
+  "capstone_theorem": "full_paper_capstone",
+  "capstone_true_threshold": 0,
+  "paper_theorems_path": "paper_theorems.json",
+  "expected_axiom_names": [
+    "propext",
+    "Classical.choice",
+    "Quot.sound",
+    "CoEALevelBased.is_nash_equilibrium",
+    "CoEALevelBased.minimax_theorem",
+    "CoEALevelBased.negative_drift_theorem",
+    "WitnessVeto.interaction_at_all_ones._native.native_decide.ax_1_2"
+  ],
+  "axiom_classifications": {
+    "is_nash_equilibrium": {"status": "definitional", "difficulty": "n/a", "note": "Type-level encoding of Nash equilibrium"},
+    "minimax_theorem": {"status": "axiom", "difficulty": "hard", "reference": "von Neumann 1928", "note": "Deep existence theorem"},
+    "negative_drift_theorem": {"status": "axiom", "difficulty": "medium", "reference": "Oliveto & Witt 2011 Thm 4"}
+  },
+  "expected_wiring": [
+    {"from": "hoeffding_inequality_iid_bounded", "to": "hoeffding_per_offspring_bound", "status": "DISCONNECTED", "note": "Bridge must consume the native measure-theoretic bound"},
+    {"from": "hoeffding_constant_derivation", "to": "hoeffding_per_offspring_bound", "status": "DISCONNECTED", "note": "Bridge must consume the algebraic derivation"},
+    {"from": "hoeffding_batch_sample_complexity", "to": "coea_transition_probability_above_crit", "status": "CONNECTED"},
+    {"from": "hoeffding_batch_sample_complexity", "to": "survivor_amplification_comma_selection", "status": "CONNECTED"}
+  ]
+}
