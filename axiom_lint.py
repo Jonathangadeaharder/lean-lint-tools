@@ -10,7 +10,7 @@ import re
 import sys
 import urllib.error
 import urllib.request
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Tuple
 
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -28,13 +28,13 @@ class Decl:
 def run_decl_dump() -> Dict[str, Decl]:
     # We use a regex fallback since Lake env is failing
     decls: Dict[str, Decl] = {}
-    
+
     # Simple regex to find axioms, theorems, defs, etc.
     # Note: This is an approximation compared to Lean's actual environment.
     patterns = {
-        "axiom": re.compile(r'^\s*axiom\s+(\w+)', re.MULTILINE),
-        "theorem": re.compile(r'^\s*(theorem|lemma)\s+(\w+)', re.MULTILINE),
-        "def": re.compile(r'\b(def|noncomputable def|structure|inductive)\s+(\w+)'),
+        "axiom": re.compile(r"^\s*axiom\s+(\w+)", re.MULTILINE),
+        "theorem": re.compile(r"^\s*(theorem|lemma)\s+(\w+)", re.MULTILINE),
+        "def": re.compile(r"\b(def|noncomputable def|structure|inductive)\s+(\w+)"),
     }
 
     # Search in FastEvolution/
@@ -48,7 +48,7 @@ def run_decl_dump() -> Dict[str, Decl]:
             continue
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
-            
+
             # Extract basic info
             for kind, regex in patterns.items():
                 for match in regex.finditer(content):
@@ -58,7 +58,7 @@ def run_decl_dump() -> Dict[str, Decl]:
                         name = match.group(2)
                     else:
                         name = match.group(1)
-                    
+
                     # For deps, we scan the body roughly or just assume mathlib/local
                     # This is the hardest part to replicate without Lean reflection.
                     # As a heuristic, we'll check for 'sorry' directly.
@@ -67,7 +67,7 @@ def run_decl_dump() -> Dict[str, Decl]:
                         # Find which block contains sorry
                         # This is very rough
                         pass
-                    
+
                     # We'll use a placeholder for deps and handle 'sorry' separately
                     decls[name] = Decl(name=name, kind=kind, deps=tuple(deps))
 
@@ -131,17 +131,20 @@ def decode_payload(raw: bytes, content_type: str) -> str:
 def analyze_derivation(decls: Dict[str, Decl], src_content: str) -> dict:
     local_axioms = {n for n, d in decls.items() if d.kind == "axiom"}
     local_non_axioms = [n for n, d in decls.items() if d.kind != "axiom"]
-    
+
     # Heuristic for sorryAx since we are using regex
     not_covered: List[str] = []
-    
+
     # Scrape all files again for 'sorry' and link them to names
     src_dir = PROJECT_ROOT / "FastEvolution"
     if not src_dir.exists():
         src_dir = PROJECT_ROOT
 
     # Match theorem/lemma followed by content until next keyword or end of file
-    block_regex = re.compile(r'\b(theorem|lemma|def|instance)\s+(\w+).*?(?=\b(?:theorem|lemma|def|instance|axiom)\b|$)', re.DOTALL)
+    block_regex = re.compile(
+        r"\b(theorem|lemma|def|instance)\s+(\w+).*?(?=\b(?:theorem|lemma|def|instance|axiom)\b|$)",
+        re.DOTALL,
+    )
 
     for path in src_dir.rglob("*.lean"):
         if ".lake" in str(path):
@@ -157,8 +160,8 @@ def analyze_derivation(decls: Dict[str, Decl], src_content: str) -> dict:
     derived_from_axioms: List[str] = []
     for name in local_non_axioms:
         if name not in [n.split(" ")[0] for n in not_covered]:
-             # Assume grounded if no sorry and not an axiom
-             derived_from_axioms.append(name)
+            # Assume grounded if no sorry and not an axiom
+            derived_from_axioms.append(name)
 
     return {
         "local_axiom_count": len(local_axioms),
@@ -208,10 +211,8 @@ def _resolve_paper_id(name: str, refs: dict, key_priority: List[str]) -> str | N
 
 def check_axiom_references(decls: Dict[str, Decl], refs: dict, offline: bool) -> dict:
     axiom_names = sorted([n for n, d in decls.items() if d.kind == "axiom"])
-    papers: dict = refs["papers"]
     external_map = refs.get("external_axioms", {})
     internal_map = refs.get("internal_axioms", {})
-    policy = refs.get("policy", {})
 
     axiom_set = set(axiom_names)
     external_set = set(external_map.keys())
@@ -244,8 +245,12 @@ def check_axiom_references(decls: Dict[str, Decl], refs: dict, offline: bool) ->
 
 def check_theorem_references(decls: Dict[str, Decl], refs: dict) -> dict:
     theorem_names = sorted([n for n, d in decls.items() if d.kind == "theorem"])
-    missing_mapping = [n for n in theorem_names if _resolve_paper_id(n, refs, ["theorems", "claims"]) is None]
-    
+    missing_mapping = [
+        n
+        for n in theorem_names
+        if _resolve_paper_id(n, refs, ["theorems", "claims"]) is None
+    ]
+
     return {
         "theorem_count": len(theorem_names),
         "missing_reference_mapping": missing_mapping,
@@ -258,31 +263,33 @@ def check_theorem_references(decls: Dict[str, Decl], refs: dict) -> dict:
 
 def render_human_report(result: dict) -> str:
     lines: List[str] = []
-    
+
     lines.append("Multiplicative Drift Analysis Linter Report")
     lines.append("===========================================")
-    
+
     refs = result.get("reference_check", {})
     lines.append(f"- Axioms found: {refs.get('axiom_count', 0)}")
     for a in refs.get("unclassified_axioms", []):
         lines.append(f"  [X] Unclassified: {a}")
-        
+
     thm = result.get("theorem_reference_check", {})
     lines.append(f"- Theorems found: {thm.get('theorem_count', 0)}")
     for t in thm.get("missing_reference_mapping", []):
         lines.append(f"  [X] Missing Reference: {t}")
-        
+
     deriv = result.get("derivation_analysis", {})
     lines.append(f"- Proven theorems: {len(deriv.get('derived_from_axioms', []))}")
     for d in deriv.get("not_covered", []):
         lines.append(f"  [!] Not Proven: {d}")
-        
+
     lines.append(f"Overall: {result.get('status', 'FAIL')}")
     return "\n".join(lines)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Regex-based linter for Multiplicative Drift Analysis.")
+    parser = argparse.ArgumentParser(
+        description="Regex-based linter for Multiplicative Drift Analysis."
+    )
     parser.add_argument("--offline", action="store_true", help="Skip URL verification.")
     args = parser.parse_args()
 
@@ -292,16 +299,24 @@ def main() -> int:
         reference_check = check_axiom_references(decls, refs, args.offline)
         theorem_reference_check = check_theorem_references(decls, refs)
         derivation_analysis = analyze_derivation(decls, "")
-        
-        status = "PASS" if not (reference_check["unclassified_axioms"] or theorem_reference_check["missing_reference_mapping"] or derivation_analysis["not_covered"]) else "FAIL"
-        
+
+        status = (
+            "PASS"
+            if not (
+                reference_check["unclassified_axioms"]
+                or theorem_reference_check["missing_reference_mapping"]
+                or derivation_analysis["not_covered"]
+            )
+            else "FAIL"
+        )
+
         result = {
             "status": status,
             "reference_check": reference_check,
             "theorem_reference_check": theorem_reference_check,
             "derivation_analysis": derivation_analysis,
         }
-        
+
         print(render_human_report(result))
         return 0 if status == "PASS" else 1
 
