@@ -19,8 +19,14 @@ formal verification malpractice:
   12. Disconnected Theorems — Verifies expected theorem-to-theorem wiring
   13. Paper Theorem Coverage— Tracks manuscript-to-Lean coverage
 
+Additional checks:
+  - Tactic Voids           — `intro _` / `rintro _` / `let _` discarding variables
+  - Compiler Trust         — `Lean.trustCompiler` bypassing kernel logic
+  - Content Discard        — `have _ :=` in capstone proofs discarding satellite results
+  - Orphaned Axioms        — Declared axioms never consumed in any proof
+
 Usage:
-  python semantic_linter.py [--expected-axioms N] [path/to/lean/files/]
+  python semantic_linter.py [--expected-axioms N] [--config linter_config.json] [path/to/lean/files/]
 
 Exit codes:
   0  — All checks pass
@@ -553,9 +559,9 @@ def check_true_conclusions(lean_dir: str, config: LinterConfig, report: LintRepo
         conclusion_block = rest[:by_idx]
         true_matches = re.findall(r"\bTrue\b", conclusion_block)
         true_count = len(true_matches)
+        line_num = content[: m.start()].count("\n") + 1
 
         if true_count > config.capstone_true_threshold:
-            line_num = content[: m.start()].count("\n") + 1
             report.violations.append(
                 Violation(
                     file=os.path.basename(filepath),
