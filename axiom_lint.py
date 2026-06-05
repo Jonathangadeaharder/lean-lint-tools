@@ -15,7 +15,12 @@ from typing import Dict, List, Tuple
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
 REFS_FILE = PROJECT_ROOT / "tools" / "axiom_refs.json"
-CACHE_DIR = PROJECT_ROOT / ".cache" / "axiom_lint"
+# Fallback: check for axiom_refs.json next to this script (standalone use)
+_LOCAL_REFS = pathlib.Path(__file__).resolve().parent / "axiom_refs.json"
+if _LOCAL_REFS.exists() and not REFS_FILE.exists():
+    REFS_FILE = _LOCAL_REFS
+    PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
+CACHE_DIR = pathlib.Path(__file__).resolve().parent / ".cache" / "axiom_lint"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -288,7 +293,7 @@ def render_human_report(result: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Regex-based linter for Multiplicative Drift Analysis."
+        description="Regex-based linter for axiom/theorem reference validation (Multiplicative Drift Analysis)."
     )
     parser.add_argument("--offline", action="store_true", help="Skip URL verification.")
     args = parser.parse_args()
