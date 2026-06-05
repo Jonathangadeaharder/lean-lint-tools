@@ -19,6 +19,7 @@ REFS_FILE = PROJECT_ROOT / "tools" / "axiom_refs.json"
 _LOCAL_REFS = pathlib.Path(__file__).resolve().parent / "axiom_refs.json"
 if _LOCAL_REFS.exists() and not REFS_FILE.exists():
     REFS_FILE = _LOCAL_REFS
+    PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
 CACHE_DIR = pathlib.Path(__file__).resolve().parent / ".cache" / "axiom_lint"
 
 
