@@ -13,7 +13,7 @@ import urllib.request
 from typing import Dict, List, Tuple
 
 
-PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
 REFS_FILE = PROJECT_ROOT / "tools" / "axiom_refs.json"
 CACHE_DIR = PROJECT_ROOT / ".cache" / "axiom_lint"
 
