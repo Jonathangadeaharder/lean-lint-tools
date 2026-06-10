@@ -37,7 +37,11 @@
     "regression_gap_sum",
     "r_local_drift_denominator_pos",
     "hamming_weight_maps_to_range",
-    "exact_hamming_sel_coupling_for_large_lambda"
+    "exact_hamming_sel_coupling_for_large_lambda",
+    "conjecture2_Corus_G1_open",
+    "conjecture2_Corus_G2_open",
+    "batch_fhat_sel_kernel",
+    "best_parent_by_fhat"
   ],
   "capstone_theorem": "full_paper_capstone",
   "capstone_true_threshold": 0,

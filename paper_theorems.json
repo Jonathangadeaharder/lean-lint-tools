@@ -79,17 +79,30 @@
       "gap_severity": "NONE"
     },
     {
-      "paper_id": "Conjecture 2 / Theorem 8 (r-local runtime)",
-      "paper_name": "Noisy batch-selection runtime for r-local games",
+      "paper_id": "Theorem 8 (exact-Hamming runtime)",
+      "paper_name": "Conditional LBT runtime for noiseless Hamming selection",
       "lean_theorem": "exact_selection_runtime_bound",
       "status": "AXIOMATIZED",
       "missing": [
-        "ConditionG1_Corus for batch-estimator kernel",
-        "ConditionG2_Corus for batch-estimator kernel",
-        "O(n log n) runtime headline vs formal sum constants"
+        "level_based_theorem (trusted external citation)",
+        "level_based_generations_finite (trusted finiteness axiom)",
+        "O(n log n) headline vs formal Θ(n³·λ) sum under δ=1/n"
+      ],
+      "gap_severity": "MEDIUM",
+      "note": "Proved internally: exact_hamming_sel_G1_Corus, exact_hamming_sel_G2_Corus, exact_hamming_sel_G3_corus_holds, exact_hamming_sel_corus_preconditions. Applies trusted LBT on Corus-faithful preconditions. Does NOT close paper Conjecture 2."
+    },
+    {
+      "paper_id": "Conjecture 2 (noisy batch F̂)",
+      "paper_name": "r-local runtime with batch-estimator selection",
+      "lean_theorem": "conjecture2_Corus_G1_open",
+      "status": "NOT_FORMALIZED",
+      "missing": [
+        "conjecture2_Corus_G1_open (batch_fhat_sel_kernel)",
+        "conjecture2_Corus_G2_open (batch_fhat_sel_kernel)",
+        "Roadmap gaps R1 (multi-coordinate perturbation) and R2 (noisy LBT coupling)"
       ],
       "gap_severity": "HIGH",
-      "note": "Exact-Hamming path: exact_hamming_sel_G1_Corus, exact_hamming_sel_G2_Corus, exact_hamming_sel_G3_corus_holds (z_j=r_local_z_corus, λ≥16n²log(256en³(n+1))), exact_hamming_sel_corus_preconditions, exact_selection_runtime_bound (finiteness via level_based_generations_finite). Still does not close paper Conjecture 2 (noisy F̂ kernel). level_based_theorem + level_based_generations_finite remain trusted axioms."
+      "note": "Scaffold kernel batch_fhat_sel_kernel defined (uses G, K, ys via F_hat). Corus G1/G2 obligations registered as open Props; no runtime theorem."
     },
     {
       "paper_id": "Lemma (Corus G2, exact Hamming)",
