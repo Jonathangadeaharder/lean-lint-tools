@@ -12,6 +12,8 @@ formal verification malpractice:
   5. Axiom Count Mismatch  — Expected vs actual axiom declarations
   6. Orphaned Theorems     — Theorems whose names are never referenced elsewhere
   7. Syntactic Tautologies — Declarations where LHS = RHS prior to evaluation
+  7c. Vacuous ∃ positivity — `∃ c>0, (expr)>0` with no parameter bound
+  7d. Unused hypotheses    — Named `h*` binders absent from the proof/term body
   8. Tactic Bloat          — Redundant/no-op tactics indicating MCTS stutter
   9. Axiom Dependency Graph— Transitive axiom verification via #print axioms
   10. True-Conclusion       — Vacuous `True` conjuncts in capstone theorems
@@ -40,6 +42,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Set, Tuple
 
@@ -175,6 +178,20 @@ SAFE_WITNESSES = {
 TAUTOLOGICAL_SIG_PATTERN = re.compile(
     r"(?:exists|∃)\s+\w+\s*(?::\s*(?:Real|Nat|ℝ|ℕ))?,\s*\w+\s*(?:>|>=)\s*0\s*(?::=|where|by)"
 )
+
+# Vacuous double-positivity: ∃ c, c > 0 ∧ <expr> > 0 with no ≤/≥ bound on expr
+VACUOUS_EXIST_POS_PATTERN = re.compile(
+    r"(?:exists|∃)\s+(\w+)\s*(?::\s*(?:Real|ℝ))?,?\s*\1\s*>\s*0\s*∧\s*(?!∀|forall)([^≤≥=↔∀\n]+?)\s*>\s*0",
+    re.MULTILINE,
+)
+
+# Named hypothesis binders in signatures (F2 phantom pattern; `_`-prefix already rule 1)
+NAMED_HYPOTHESIS_PATTERN = re.compile(r"(?<!\()\((h\w+)\s*:")
+
+# Tactics that consume hypotheses without naming them explicitly in the proof text
+IMPLICIT_HYP_TACTIC_PATTERN = re.compile(
+    r"\b(linarith|nlinarith|omega|positivity|ring|field_simp|simp|aesop|decide|norm_num|trivial|rfl|exact_mod_cast|push_cast|interval_cases)\b"
+)
 # Regex for skip tactic (explicit no-op)
 SKIP_TACTIC_PATTERN = re.compile(r"^\s*skip\s*$")
 
@@ -193,8 +210,10 @@ def check_phantom_variables(
     for match in SIG_PATTERN.finditer(content):
         name = match.group(1)
         start_pos = match.start()
-        # Get the line number
         line_num = content[:start_pos].count("\n") + 1
+        decl_head = content[max(0, start_pos - 20) : start_pos + len(name) + 8]
+        if re.search(r"\b(?:noncomputable\s+)?def\s+" + re.escape(name) + r"\b", decl_head):
+            continue
 
         # Extract the full signature (up to `:=` or `where` or `by`)
         remaining = content[start_pos:]
@@ -245,27 +264,54 @@ def check_linter_suppressions(
             )
 
 
+def _strip_lean_comments(content: str) -> List[str]:
+    """Return per-line code with Lean comments (`--`, `/- -/`) removed."""
+    lines = content.split("\n")
+    out: List[str] = []
+    in_block = False
+    for line in lines:
+        code_parts: List[str] = []
+        i = 0
+        while i < len(line):
+            if in_block:
+                end = line.find("-/", i)
+                if end == -1:
+                    break
+                in_block = False
+                i = end + 2
+            else:
+                block = line.find("/-", i)
+                dash = line.find("--", i)
+                candidates = [(p, "block") for p in [block] if p != -1]
+                candidates += [(p, "line") for p in [dash] if p != -1]
+                if not candidates:
+                    code_parts.append(line[i:])
+                    break
+                pos, kind = min(candidates, key=lambda t: t[0])
+                code_parts.append(line[i:pos])
+                if kind == "block":
+                    in_block = True
+                    i = pos + 2
+                else:
+                    break
+        out.append("".join(code_parts))
+    return out
+
+
 def check_sorry(filepath: str, content: str, lines: List[str], report: LintReport):
-    """Rule 3: Detect sorry statements."""
-    for i, line in enumerate(lines, 1):
-        stripped = line.strip()
-        # Skip comments
-        if stripped.startswith("--") or stripped.startswith("/-"):
-            continue
-        if SORRY_PATTERN.search(line):
-            # Make sure it's not inside a comment
-            # Simple heuristic: check if 'sorry' appears before any '--'
-            code_part = line.split("--")[0]
-            if SORRY_PATTERN.search(code_part):
-                report.violations.append(
-                    Violation(
-                        file=filepath,
-                        line=i,
-                        rule="SORRY_STATEMENT",
-                        severity="ERROR",
-                        message="Unfinished proof: `sorry` detected. All proofs must be complete.",
-                    )
+    """Rule 3: Detect sorry statements in proof bodies (not in comments)."""
+    code_lines = _strip_lean_comments(content)
+    for i, code_line in enumerate(code_lines, 1):
+        if SORRY_PATTERN.search(code_line):
+            report.violations.append(
+                Violation(
+                    file=filepath,
+                    line=i,
+                    rule="SORRY_STATEMENT",
+                    severity="ERROR",
+                    message="Unfinished proof: `sorry` detected. All proofs must be complete.",
                 )
+            )
 
 
 def check_tactic_voids(
@@ -473,6 +519,97 @@ def check_axioms(filepath: str, content: str, lines: List[str], report: LintRepo
         report.axiom_details.append((filepath, line_num, name))
 
 
+def _signature_slice(content: str, start_pos: int) -> Tuple[str, int]:
+    """Return (signature_text, line_number) for a declaration starting at start_pos."""
+    line_num = content[:start_pos].count("\n") + 1
+    remaining = content[start_pos:]
+    sig_end = None
+    for marker in [":= by", ":=by", ":= by\n", ":=\n", " by\n", " where\n", " :="]:
+        idx = remaining.find(marker)
+        if idx != -1:
+            if sig_end is None or idx < sig_end:
+                sig_end = idx
+    if sig_end is None:
+        sig_end = min(len(remaining), 500)
+    return remaining[:sig_end], line_num
+
+
+def _declaration_body(content: str, start_pos: int) -> str:
+    """Text after `:=` for a declaration (proof or term)."""
+    remaining = content[start_pos:]
+    assign = remaining.find(":=")
+    if assign == -1:
+        return ""
+    body = remaining[assign + 2 :]
+    next_decl = re.search(
+        r"\n(?:private\s+|protected\s+|noncomputable\s+)*(?:theorem|lemma|def|axiom|example|end|namespace)\s",
+        body,
+    )
+    if next_decl:
+        body = body[: next_decl.start()]
+    return body
+
+
+THEOREM_LEMMA_PATTERN = re.compile(
+    r"^\s*(?:theorem|lemma)\s+(\w+)", re.MULTILINE
+)
+
+
+def check_vacuous_existential_positivity(
+    filepath: str, content: str, lines: List[str], report: LintReport
+):
+    """Rule 7c: Flag ∃ c>0, (positive expr)>0 with no bound against parameters."""
+    for match in THEOREM_LEMMA_PATTERN.finditer(content):
+        name = match.group(1)
+        start_pos = match.start()
+        signature, line_num = _signature_slice(content, start_pos)
+        if VACUOUS_EXIST_POS_PATTERN.search(signature):
+            report.violations.append(
+                Violation(
+                    file=filepath,
+                    line=line_num,
+                    rule="VACUOUS_EXISTENTIAL_POSITIVITY",
+                    severity="ERROR",
+                    message=f"Theorem `{name}` has a vacuous existential (`∃ c>0, expr>0`) "
+                    f"that proves only positivity, not a bound against algorithmic parameters. "
+                    f"Replace with a substantive bound (e.g. `T ≤ f(n,λ)`) or a definitional witness.",
+                )
+            )
+
+
+def check_unused_named_hypotheses(
+    filepath: str, content: str, lines: List[str], report: LintReport
+):
+    """Rule 7d: Named hypothesis binders never referenced in the declaration body."""
+    decl_pattern = re.compile(
+        r"^\s*(?:theorem|lemma)\s+(\w+)", re.MULTILINE
+    )
+    for match in decl_pattern.finditer(content):
+        name = match.group(1)
+        start_pos = match.start()
+        signature, line_num = _signature_slice(content, start_pos)
+        body = _declaration_body(content, start_pos)
+        if not body.strip():
+            continue
+        if IMPLICIT_HYP_TACTIC_PATTERN.search(body):
+            continue
+        for hyp in NAMED_HYPOTHESIS_PATTERN.finditer(signature):
+            hname = hyp.group(1)
+            if not re.search(r"\b" + re.escape(hname) + r"\b", body):
+                hyp_line = line_num + signature[: hyp.start()].count("\n")
+                report.violations.append(
+                    Violation(
+                        file=filepath,
+                        line=hyp_line,
+                        rule="UNUSED_NAMED_HYPOTHESIS",
+                        severity="ERROR",
+                        message=f"Named hypothesis `{hname}` in `{name}` is never referenced "
+                        f"in the proof/term body — decorative parameter (F2 phantom pattern). "
+                        f"Remove it from the signature or use it structurally.",
+                    )
+                )
+
+
 def check_tautological_signatures(
     filepath: str, content: str, lines: List[str], report: LintReport
 ):
@@ -480,21 +617,8 @@ def check_tautological_signatures(
     for match in SIG_PATTERN.finditer(content):
         name = match.group(1)
         start_pos = match.start()
-        line_num = content[:start_pos].count("\n") + 1
-
-        # Extract the full signature (up to `:=` or `where` or `by`)
-        remaining = content[start_pos:]
-        sig_end = None
-        for marker in [":= by", ":=by", ":= by\n", ":=\n", " by\n", " where\n", " :="]:
-            idx = remaining.find(marker)
-            if idx != -1:
-                if sig_end is None or idx < sig_end:
-                    sig_end = idx
-
-        if sig_end is None:
-            sig_end = min(len(remaining), 500)  # safety cap
-
-        signature = remaining[: sig_end + 5]  # Include the assignment to match regex
+        signature, line_num = _signature_slice(content, start_pos)
+        signature = signature + " by"  # anchor TAUTOLOGICAL_SIG_PATTERN
 
         if TAUTOLOGICAL_SIG_PATTERN.search(signature):
             report.violations.append(
@@ -535,7 +659,11 @@ def check_true_conclusions(lean_dir: str, config: LinterConfig, report: LintRepo
         return
 
     # Search all files for the capstone
-    for filepath in sorted(glob.glob(os.path.join(lean_dir, "*.lean"))):
+    for filepath in sorted(
+        p
+        for p in glob.glob(os.path.join(lean_dir, "**/*.lean"), recursive=True)
+        if ".lake" not in p.split(os.sep)
+    ):
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
 
@@ -621,7 +749,11 @@ def check_disconnected_theorems(
 
     # Load all file contents
     all_contents: Dict[str, str] = {}
-    for filepath in sorted(glob.glob(os.path.join(lean_dir, "*.lean"))):
+    for filepath in sorted(
+        p
+        for p in glob.glob(os.path.join(lean_dir, "**/*.lean"), recursive=True)
+        if ".lake" not in p.split(os.sep)
+    ):
         with open(filepath, "r", encoding="utf-8") as f:
             all_contents[os.path.basename(filepath)] = f.read()
     combined = "\n".join(all_contents.values())
@@ -774,11 +906,28 @@ def audit_file(filepath: str, report: LintReport):
     check_compiler_trust(basename, content, lines, report)
     check_dummy_witnesses(basename, content, lines, report)
     check_tautological_signatures(basename, content, lines, report)
+    check_vacuous_existential_positivity(basename, content, lines, report)
+    check_unused_named_hypotheses(basename, content, lines, report)
     check_syntactic_tautologies(basename, content, lines, report)
     check_tactic_bloat(basename, content, lines, report)
     check_axioms(basename, content, lines, report)
     collect_theorem_names(basename, content, report)
     collect_references(basename, content, report)
+
+
+def _project_lean_files(lean_dir: str) -> List[str]:
+    """All project `.lean` files (excludes `.lake/` and `_`-prefixed scratch files)."""
+    return sorted(
+        p
+        for p in glob.glob(os.path.join(lean_dir, "**/*.lean"), recursive=True)
+        if ".lake" not in p.split(os.sep)
+        and not os.path.basename(p).startswith("_")
+    )
+
+
+def _root_lean_files(lean_dir: str) -> List[str]:
+    """Top-level `.lean` files only — primary audit surface."""
+    return [p for p in _project_lean_files(lean_dir) if os.path.dirname(p) == lean_dir]
 
 
 def run_audit(
@@ -789,7 +938,8 @@ def run_audit(
         config = LinterConfig()
     report = LintReport()
 
-    lean_files = sorted(glob.glob(os.path.join(lean_dir, "*.lean")))
+    lean_files = _root_lean_files(lean_dir)
+    project_lean_files = _project_lean_files(lean_dir)
 
     if not lean_files:
         print(f"ERROR: No .lean files found in {lean_dir}")
@@ -820,10 +970,9 @@ def run_audit(
             )
         )
 
-    # Post-pass: Check for orphaned theorems
-    # Count how many times each theorem name appears across ALL file contents
+    # Post-pass: Check for orphaned theorems (references counted project-wide)
     all_contents = []
-    for filepath in lean_files:
+    for filepath in project_lean_files:
         with open(filepath, "r", encoding="utf-8") as f:
             all_contents.append(f.read())
     combined = "\n".join(all_contents)
@@ -868,14 +1017,18 @@ def run_audit(
         print()
         print("AXIOM DEPENDENCY GRAPH VERIFICATION")
         print("-" * 70)
+        script_path: Optional[str] = None
         try:
-            # Create a temporary Lean script to extract axioms
-            script = f"import UnifiedPaperValidation\n#print axioms UnifiedPaperValidation.{config.capstone_theorem}\n"
-            script_path = os.path.join(lean_dir, "_axiom_check.lean")
-            with open(script_path, "w") as f:
+            script = (
+                f"import UnifiedPaperValidation\n"
+                f"#print axioms UnifiedPaperValidation.{config.capstone_theorem}\n"
+            )
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".lean", delete=False, encoding="utf-8"
+            ) as f:
                 f.write(script)
+                script_path = f.name
 
-            # Use `lake env lean` which automatically configures LEAN_PATH
             lake_bin = os.path.expanduser("~/.elan/bin/lake")
             if not os.path.isfile(lake_bin):
                 lake_bin = "lake"
@@ -887,10 +1040,6 @@ def run_audit(
                 timeout=120,
                 cwd=lean_dir,
             )
-
-            # Clean up
-            if os.path.isfile(script_path):
-                os.remove(script_path)
 
             # Parse the output for axiom names
             # #print axioms output format:
@@ -973,9 +1122,8 @@ def run_audit(
                         print(f"    {line}")
         except (subprocess.TimeoutExpired, FileNotFoundError) as e:
             print(f"  (Axiom dependency check skipped: {e})")
-            # Clean up on error
-            script_path = os.path.join(lean_dir, "_axiom_check.lean")
-            if os.path.isfile(script_path):
+        finally:
+            if script_path and os.path.isfile(script_path):
                 os.remove(script_path)
 
     return report

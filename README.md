@@ -16,6 +16,8 @@ Detects anti-patterns that pass the Lean 4 type-checker but constitute formal ve
 | 5 | Axiom count mismatch — expected vs actual axiom count | ERROR |
 | 6 | Orphaned theorems — theorems never referenced elsewhere | ERROR |
 | 7 | Syntactic tautologies — LHS = RHS prior to evaluation | ERROR |
+| 7c | Vacuous ∃ positivity — `∃ c>0, expr>0` without parameter bound | ERROR |
+| 7d | Unused named hypotheses — `h*` binders absent from proof body | ERROR |
 | 8 | Tactic bloat — consecutive duplicate tactics, `skip` no-ops | ERROR/WARNING |
 | 9 | Axiom dependency graph — transitive axiom verification via `#print axioms` | ERROR/WARNING |
 | 10 | True conclusions — vacuous `True` conjuncts in capstone theorem | WARNING |
