@@ -87,10 +87,10 @@
         "ConditionG1_Corus for batch-estimator kernel",
         "ConditionG2_Corus for batch-estimator kernel",
         "O(n log n) runtime headline vs formal sum constants",
-        ".toReal finiteness in runtime conclusion"
+
       ],
       "gap_severity": "HIGH",
-      "note": "Exact-Hamming path: exact_hamming_sel_G1_Corus, exact_hamming_sel_G2_Corus, exact_hamming_sel_G3_corus_holds (z_j=r_local_z_corus, λ≥16n²log(256en³(n+1))), exact_hamming_sel_corus_preconditions, exact_selection_runtime_bound. Still does not close paper Conjecture 2 (noisy F̂ kernel). level_based_theorem remains trusted axiom."
+      "note": "Exact-Hamming path: exact_hamming_sel_G1_Corus, exact_hamming_sel_G2_Corus, exact_hamming_sel_G3_corus_holds (z_j=r_local_z_corus, λ≥16n²log(256en³(n+1))), exact_hamming_sel_corus_preconditions, exact_selection_runtime_bound (finiteness via level_based_generations_finite). Still does not close paper Conjecture 2 (noisy F̂ kernel). level_based_theorem + level_based_generations_finite remain trusted axioms."
     },
     {
       "paper_id": "Lemma (Corus G2, exact Hamming)",
