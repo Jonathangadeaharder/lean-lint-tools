@@ -77,11 +77,52 @@
       "status": "FULLY_PROVEN",
       "missing": [],
       "gap_severity": "NONE"
+    },
+    {
+      "paper_id": "Conjecture 2 / Theorem 8 (r-local runtime)",
+      "paper_name": "Noisy batch-selection runtime for r-local games",
+      "lean_theorem": "exact_selection_runtime_bound",
+      "status": "AXIOMATIZED",
+      "missing": [
+        "ConditionG1_Corus for batch-estimator kernel",
+        "ConditionG2_Corus for batch-estimator kernel",
+        "O(n log n) runtime headline vs formal sum constants",
+        ".toReal finiteness in runtime conclusion"
+      ],
+      "gap_severity": "HIGH",
+      "note": "Exact-Hamming path: exact_hamming_sel_G1_Corus, exact_hamming_sel_G2_Corus, exact_hamming_sel_G3_corus_holds (z_j=r_local_z_corus, λ≥16n²log(256en³(n+1))), exact_hamming_sel_corus_preconditions, exact_selection_runtime_bound. Still does not close paper Conjecture 2 (noisy F̂ kernel). level_based_theorem remains trusted axiom."
+    },
+    {
+      "paper_id": "Lemma (Corus G2, exact Hamming)",
+      "paper_name": "Selection amplification on A_{≥j+1}",
+      "lean_theorem": "exact_hamming_sel_G2_Corus",
+      "status": "FULLY_PROVEN",
+      "missing": [],
+      "gap_severity": "NONE",
+      "note": "Faithful ConditionG2_Corus for noiseless exact_hamming_sel_kernel via sel_g2_corus_real_bound."
+    },
+    {
+      "paper_id": "Lemma (coupling G2)",
+      "paper_name": "Exact-Hamming selection coupling G2",
+      "lean_theorem": "exact_hamming_sel_G2_coupling",
+      "status": "FULLY_PROVEN",
+      "missing": [],
+      "gap_severity": "NONE",
+      "note": "Proves file-internal ConditionG2_coupling (shrinkage tolerance). Corus amplification is exact_hamming_sel_G2_Corus. Alias r_local_G2 retained."
+    },
+    {
+      "paper_id": "Lemma (r-local alignment)",
+      "paper_name": "Batch estimator respects fitness gap (Theorem 7)",
+      "lean_theorem": "r_local_alignment",
+      "status": "FULLY_PROVEN",
+      "missing": [],
+      "gap_severity": "NONE"
     }
   ],
   "axiom_classifications": {
     "is_nash_equilibrium": {"status": "definitional", "difficulty": "n/a", "note": "Type-level encoding of Nash equilibrium"},
     "level_based_gen_bound": {"status": "proven", "difficulty": "medium", "reference": "Additive drift (He & Yao 2001)", "note": "Proved via additive drift: T ≤ n/δ ≤ 2n²"},
+    "level_based_theorem": {"status": "axiomatized", "difficulty": "high", "reference": "Corus, Dang, Eremeev, Lehre, IEEE TEVC 22(5):707-719 (2018)", "note": "Trusted axiom on Corus-faithful G1/G2/G3. Coupling preconditions proved separately; not interchangeable."},
     "negative_drift_theorem": {"status": "proven", "difficulty": "medium", "reference": "Oliveto & Witt 2011 Thm 4", "note": "Existential witness via exp bound. Full measure-theoretic OST proof in DriftTheorems/NegativeDrift.lean"},
     "exact_copy_prob": {"status": "proven", "difficulty": "easy", "note": "Proven in SimultaneousPersistence.lean via pow_pos and pow_le_pow_left"},
     "reservoir_formation_bound": {"status": "proven", "difficulty": "medium", "note": "Proven in SimultaneousPersistence.lean via (1/4)^L induction"}
