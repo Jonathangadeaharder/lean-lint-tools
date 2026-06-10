@@ -117,6 +117,23 @@
       "status": "FULLY_PROVEN",
       "missing": [],
       "gap_severity": "NONE"
+    },
+    {
+      "paper_id": "Lemma (paper G1 mirror, appendix)",
+      "paper_name": "Halved unscaled drift floor via mutation_prob_lower_bound",
+      "lean_theorem": "paper_G1_z_corus_mirror",
+      "status": "FULLY_PROVEN",
+      "missing": [],
+      "gap_severity": "NONE",
+      "note": "Chains mutation_prob_ge_paper_G1_unscaled (L703) + min_halves_nonneg into r_local_z_corus floor min{1/(2en),1/8}. Population upgrade: coea_measure_ge_half_z_star_corus."
+    },
+    {
+      "paper_id": "Lemma (paper G1 population mirror)",
+      "paper_name": "coea_measure ≥ (1/2)·z_* from count threshold",
+      "lean_theorem": "coea_measure_ge_half_z_star_corus",
+      "status": "FULLY_PROVEN",
+      "missing": [],
+      "gap_severity": "NONE"
     }
   ],
   "axiom_classifications": {
