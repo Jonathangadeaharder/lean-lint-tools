@@ -608,6 +608,31 @@ def check_unused_named_hypotheses(
                         f"Remove it from the signature or use it structurally.",
                     )
                 )
+                continue
+            # Discard-only use: `have _ := hname` / `let _ := hname` does not count.
+            discard_only = re.compile(
+                r"(?:have|let)\s+_\s*:=\s*"
+                + re.escape(hname)
+                + r"\b"
+            )
+            structural = re.sub(
+                r"(?:have|let)\s+_\s*:=\s*" + re.escape(hname) + r"\b",
+                "",
+                body,
+            )
+            if not re.search(r"\b" + re.escape(hname) + r"\b", structural):
+                hyp_line = line_num + signature[: hyp.start()].count("\n")
+                report.violations.append(
+                    Violation(
+                        file=filepath,
+                        line=hyp_line,
+                        rule="DISCARD_ONLY_HYPOTHESIS",
+                        severity="ERROR",
+                        message=f"Named hypothesis `{hname}` in `{name}` is referenced only via "
+                        f"`have _ := {hname}` / `let _ := {hname}` — linter gaming. "
+                        f"Consume it structurally or remove it from the signature.",
+                    )
+                )
 
 
 def check_tautological_signatures(
@@ -712,13 +737,98 @@ def check_true_conclusions(lean_dir: str, config: LinterConfig, report: LintRepo
                     file=os.path.basename(filepath),
                     line=line_num,
                     rule="CONTENT_DISCARD",
-                    severity="WARNING",
+                    severity="ERROR",
                     message=f"Capstone proof uses {len(discard_matches)} `have _ :=` pattern(s), "
                     f"which call satellite theorems but discard their results. "
                     f"The theorem content is invoked but not captured in the conclusion type.",
                 )
             )
         break  # Found capstone, done
+
+
+def check_content_discard_all_theorems(
+    filepath: str, content: str, lines: List[str], report: LintReport
+):
+    """Rule 7e: `have _ :=` discards satellite content in any theorem/lemma proof."""
+    decl_pattern = re.compile(
+        r"^\s*(?:theorem|lemma)\s+(\w+)", re.MULTILINE
+    )
+    for match in decl_pattern.finditer(content):
+        name = match.group(1)
+        start_pos = match.start()
+        body = _declaration_body(content, start_pos)
+        if not body.strip():
+            continue
+        discard_matches = re.findall(r"have\s+_\s+:=", body)
+        if not discard_matches:
+            continue
+        line_num = content[: start_pos].count("\n") + 1
+        report.violations.append(
+            Violation(
+                file=filepath,
+                line=line_num,
+                rule="CONTENT_DISCARD",
+                severity="ERROR",
+                message=f"Theorem/lemma `{name}` uses {len(discard_matches)} `have _ :=` "
+                f"pattern(s) — satellite content invoked but discarded.",
+            )
+        )
+
+
+def check_required_conclusion_tokens(
+    lean_dir: str, config: LinterConfig, report: LintReport
+):
+    """Rule 14: Paper-tracked theorems must mention required tokens in their signature."""
+    pt_path = config.paper_theorems_path
+    if not pt_path or not os.path.isfile(pt_path):
+        return
+
+    with open(pt_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    all_contents: Dict[str, str] = {}
+    for filepath in _project_lean_files(lean_dir):
+        with open(filepath, "r", encoding="utf-8") as f:
+            all_contents[os.path.basename(filepath)] = f.read()
+    combined = "\n".join(all_contents.values())
+
+    for thm in data.get("theorems", []):
+        tokens = thm.get("required_conclusion_tokens")
+        lean_name = thm.get("lean_theorem")
+        if not tokens or not lean_name:
+            continue
+        pattern = re.compile(
+            r"(?:theorem|lemma|def)\s+"
+            + re.escape(lean_name)
+            + r"\b(.*?)(?=(?:theorem|lemma|def|axiom|end\s|$))",
+            re.DOTALL,
+        )
+        match = pattern.search(combined)
+        if not match:
+            report.violations.append(
+                Violation(
+                    file="[PAPER_COVERAGE]",
+                    line=0,
+                    rule="REQUIRED_CONCLUSION_MISSING",
+                    severity="ERROR",
+                    message=f"{thm.get('paper_id', '?')}: tracked theorem `{lean_name}` "
+                    f"not found in Lean sources.",
+                )
+            )
+            continue
+        signature_block = match.group(1)
+        missing = [t for t in tokens if t not in signature_block]
+        if missing:
+            report.violations.append(
+                Violation(
+                    file="[PAPER_COVERAGE]",
+                    line=0,
+                    rule="REQUIRED_CONCLUSION_MISSING",
+                    severity="ERROR",
+                    message=f"{thm.get('paper_id', '?')}: `{lean_name}` signature missing "
+                    f"required token(s): {missing}.",
+                )
+            )
 
 
 def check_axiom_provability(config: LinterConfig, report: LintReport):
@@ -908,6 +1018,7 @@ def audit_file(filepath: str, report: LintReport):
     check_tautological_signatures(basename, content, lines, report)
     check_vacuous_existential_positivity(basename, content, lines, report)
     check_unused_named_hypotheses(basename, content, lines, report)
+    check_content_discard_all_theorems(basename, content, lines, report)
     check_syntactic_tautologies(basename, content, lines, report)
     check_tactic_bloat(basename, content, lines, report)
     check_axioms(basename, content, lines, report)
@@ -956,6 +1067,7 @@ def run_audit(
     check_axiom_provability(config, report)
     check_disconnected_theorems(lean_dir, config, report)
     check_paper_coverage(config, report)
+    check_required_conclusion_tokens(lean_dir, config, report)
 
     # Post-pass: Check axiom count
     if report.axiom_count != expected_axioms:
